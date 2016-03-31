@@ -8,17 +8,17 @@ Setup
 -------------
 Before use, you must get an API key from [OpenWeatherMap](http://openweathermap.org/).
 
-Then, create a configuration file at `~/.i3weather` with the following:
+Then, create a configuration file at `~/.i3weather`, filling in the appropriate information:
 
     [owm]
     api_key=API_KEY_KERE
     location=Philadelphia,PA
+    
+Get `i3weather` with:
 
-Filling in the API key with your own, and location with your location.
+    pip install i3weather
 
-Clone this repository and run `python setup.py install`.
-
-Finally, edit your `.i3/config` and add:
+Finally, modify your `.i3/config` to have the following and then restart i3:
 
     bar {
       position bottom
