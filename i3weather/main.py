@@ -1,39 +1,20 @@
 import argparse
 import configparser
 import json
+import os
 import pyowm
 import string
-import os
 import sys
 
 from i3weather.log import logger
 
 
+DEFAULT_FORMAT = '{short_status} - {temp} F - {wind_speed} Mph'
+
+
 def error(message, *args):
     logger.critical('ERROR: ' + message, *args)
     sys.exit(1)
-
-
-def inject_weather(info, owm, location, str_format):
-    obs = owm.weather_at_place(location)
-    weather = obs.get_weather()
-    wind = weather.get_wind()
-    loc = obs.get_location()
-    values = {
-        'temp': weather.get_temperature('fahrenheit')['temp'],
-        'pressure': weather.get_pressure()['press'],
-        'status': string.capwords(weather.get_detailed_status()),
-        'short_status': string.capwords(weather.get_status()),
-        'wind_dir': wind['deg'],
-        'wind_speed': wind['speed'],
-        'location': loc.get_name(),
-    }
-
-    info.insert(0, {
-        'name': 'weather',
-        'full_text': str_format.format(**values)
-    })
-    return info
 
 
 def print_line(message):
@@ -51,7 +32,30 @@ def read_line():
         sys.exit()
 
 
-def loop_weather(owm, location, str_format):
+def get_weather(info, owm, location, str_format, unit):
+    obs = owm.weather_at_place(location)
+    weather = obs.get_weather()
+    wind = weather.get_wind()
+    loc = obs.get_location()
+    values = {
+        'temp': weather.get_temperature(unit)['temp'],
+        'temp_unit': unit,
+        'pressure': weather.get_pressure()['press'],
+        'status': string.capwords(weather.get_detailed_status()),
+        'short_status': string.capwords(weather.get_status()),
+        'wind_dir': wind['deg'],
+        'wind_speed': wind['speed'],
+        'location': loc.get_name(),
+    }
+
+    return {
+        'name': 'weather',
+        'full_text': str_format.format(**values)
+    }
+    return info
+
+
+def loop_weather(owm, location, str_format, unit, position):
     # Version line
     print_line(read_line())
     # Line starting infinite json array
@@ -62,8 +66,20 @@ def loop_weather(owm, location, str_format):
         if line.startswith(','):
             line, prefix = line[1:], ','
 
-        line = inject_weather(json.loads(line), owm, location, str_format)
-        print_line(prefix + json.dumps(line))
+        j = json.loads(line)
+        weather = get_weather(j, owm, location, str_format, unit)
+        j.insert(position, weather)
+        print_line(prefix + json.dumps(j))
+
+
+def get_value(config, section, key, default=None):
+    try:
+        return config.get(section, key)
+    except (configparser.NoOptionError, configparser.NoSectionError) as ex:
+        if default is not None:
+            return default
+        raise ex
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -91,13 +107,14 @@ def main():
         error('Invalid API key in config')
 
     try:
-        str_format = config.get('i3weather', 'formati')
-    except configparser.NoOptionError:
-        str_format = '{short_status} - {temp} F - {wind_speed} Mph'
-
-    try:
         location = config.get('owm', 'location')
     except configparser.NoOptionError:
         error('No location set in config')
 
-    loop_weather(owm, location, str_format)
+    str_format = get_value(config, 'i3weather', 'format', DEFAULT_FORMAT)
+    temp_unit = get_value(config, 'owm', 'temp_unit', 'fahrenheit').lower()
+    if temp_unit not in ('fahrenheit', 'celsius'):
+        error('Invalid temperature unit %s', temp_unit)
+
+    position = int(get_value(config, 'i3weather', 'position', 0))
+    loop_weather(owm, location, str_format, temp_unit, position)
