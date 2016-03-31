@@ -13,7 +13,7 @@ Then, create a configuration file at `~/.i3weather`, filling in the appropriate 
     [owm]
     api_key=API_KEY_KERE
     location=Philadelphia,PA
-    temp_unit=F
+    temp_unit=fahrenheit
     [i3weather]
     format={short_status} - {temp} {temp_unit} - {wind_speed} Mph
     
