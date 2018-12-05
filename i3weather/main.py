@@ -5,6 +5,8 @@ import os
 import pyowm
 import string
 import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
 
 from i3weather.log import logger
 
